@@ -27,7 +27,10 @@ const Login = () => {
     const { error } = await signIn(email, password);
     setLoading(false);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      const msg = error.message?.toLowerCase().includes("email not confirmed")
+        ? (t("auth.emailNotConfirmed") || "Please confirm your email before signing in. Check your inbox.")
+        : error.message;
+      toast({ title: "Error", description: msg, variant: "destructive" });
     } else {
       navigate("/dashboard");
     }

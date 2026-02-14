@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
       supabase.from("profiles").select("first_name, last_name, ministry, avatar_url, organization_id, is_verified").eq("user_id", userId).maybeSingle(),
     ]);
-    setRole((roleData?.role as AppRole) ?? "employee");
+    setRole(((roleData as any)?.role as AppRole) ?? "employee");
     setProfile(profileData as Profile | null);
   };
 

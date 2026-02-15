@@ -206,6 +206,9 @@ const translations: Record<string, Record<Lang, string>> = {
   "courses.backToCourses": { en: "Back to Courses", fr: "Retour aux cours" },
   "courses.noChapters": { en: "No chapters available for this course yet.", fr: "Aucun chapitre disponible pour ce cours." },
   "courses.noContent": { en: "No content available for this chapter.", fr: "Aucun contenu disponible pour ce chapitre." },
+  "courses.selectChapter": { en: "Select a chapter to view its content", fr: "Sélectionnez un chapitre pour voir son contenu" },
+  "courses.chapterAdded": { en: "Chapter added successfully", fr: "Chapitre ajouté avec succès" },
+  "courses.chapterDeleted": { en: "Chapter deleted", fr: "Chapitre supprimé" },
 };
 
 interface LanguageContextType {

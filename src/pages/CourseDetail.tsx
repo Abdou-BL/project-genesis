@@ -1,12 +1,17 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, BookOpen, Play, FileText, Video, ExternalLink } from "lucide-react";
+import { ArrowLeft, BookOpen, Play, FileText, Video, ExternalLink, Plus, Upload, Link as LinkIcon, X, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Chapter {
@@ -43,29 +48,89 @@ const CourseDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { role, isVerified } = useAuth();
+  const { toast } = useToast();
+  const canManage = role === "admin" || (role === "administrative" && isVerified);
+
   const [course, setCourse] = useState<CourseData | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [activeChapter, setActiveChapter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  // Add chapter dialog state
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [newChapterTitle, setNewChapterTitle] = useState("");
+  const [newChapterPdf, setNewChapterPdf] = useState<File | null>(null);
+  const [newChapterLink, setNewChapterLink] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  const fetchData = async () => {
     if (!id) return;
-    const fetchData = async () => {
-      const [courseRes, chaptersRes] = await Promise.all([
-        supabase.from("courses").select("id, title, description, level, duration, modules").eq("id", id).single(),
-        supabase.from("chapters").select("*").eq("course_id", id).order("sort_order", { ascending: true }),
-      ]);
-      if (courseRes.data) setCourse(courseRes.data);
-      if (chaptersRes.data) {
-        setChapters(chaptersRes.data);
-        if (chaptersRes.data.length > 0) setActiveChapter(chaptersRes.data[0].id);
-      }
-      setLoading(false);
-    };
-    fetchData();
-  }, [id]);
+    const [courseRes, chaptersRes] = await Promise.all([
+      supabase.from("courses").select("id, title, description, level, duration, modules").eq("id", id).single(),
+      supabase.from("chapters").select("*").eq("course_id", id).order("sort_order", { ascending: true }),
+    ]);
+    if (courseRes.data) setCourse(courseRes.data);
+    if (chaptersRes.data) setChapters(chaptersRes.data);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchData(); }, [id]);
 
   const active = chapters.find((c) => c.id === activeChapter);
+
+  const uploadPdf = async (file: File): Promise<string | null> => {
+    const fileName = `${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage.from("course-pdfs").upload(fileName, file);
+    if (error) {
+      toast({ title: "Upload error", description: error.message, variant: "destructive" });
+      return null;
+    }
+    const { data: urlData } = supabase.storage.from("course-pdfs").getPublicUrl(fileName);
+    return urlData.publicUrl;
+  };
+
+  const handleAddChapter = async () => {
+    if (!newChapterTitle.trim() || !id) return;
+    setAdding(true);
+
+    let pdfUrl: string | null = null;
+    if (newChapterPdf) pdfUrl = await uploadPdf(newChapterPdf);
+
+    const { error } = await supabase.from("chapters").insert({
+      course_id: id,
+      title: newChapterTitle.trim(),
+      pdf_url: pdfUrl,
+      link: newChapterLink.trim() || null,
+      sort_order: chapters.length,
+    });
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      // Update course modules count
+      await supabase.from("courses").update({ modules: chapters.length + 1 }).eq("id", id);
+      toast({ title: t("courses.chapterAdded") });
+      setNewChapterTitle("");
+      setNewChapterPdf(null);
+      setNewChapterLink("");
+      setAddDialogOpen(false);
+      fetchData();
+    }
+    setAdding(false);
+  };
+
+  const handleDeleteChapter = async (chapterId: string) => {
+    const { error } = await supabase.from("chapters").delete().eq("id", chapterId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      if (activeChapter === chapterId) setActiveChapter(null);
+      await supabase.from("courses").update({ modules: Math.max(0, chapters.length - 1) }).eq("id", id!);
+      toast({ title: t("courses.chapterDeleted") });
+      fetchData();
+    }
+  };
 
   if (loading) {
     return (
@@ -116,7 +181,7 @@ const CourseDetail = () => {
           </div>
         </div>
 
-        {chapters.length === 0 ? (
+        {chapters.length === 0 && !canManage ? (
           <div className="glass-card rounded-xl p-12 text-center">
             <BookOpen className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground text-lg">{t("courses.noChapters")}</p>
@@ -130,35 +195,92 @@ const CourseDetail = () => {
               </h3>
               <div className="space-y-1">
                 {chapters.map((ch, i) => (
-                  <button
-                    key={ch.id}
-                    onClick={() => setActiveChapter(ch.id)}
-                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center gap-3 group ${
-                      activeChapter === ch.id
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "hover:bg-muted/60 text-foreground"
-                    }`}
-                  >
-                    <span className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold shrink-0 ${
-                      activeChapter === ch.id ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
-                    }`}>
-                      {i + 1}
-                    </span>
-                    <span className="truncate">{ch.title}</span>
-                    <div className="ml-auto flex gap-1 shrink-0">
-                      {ch.pdf_url && <FileText className="h-3.5 w-3.5 opacity-60" />}
-                      {ch.link && isYouTubeUrl(ch.link) && <Video className="h-3.5 w-3.5 opacity-60" />}
-                      {ch.link && !isYouTubeUrl(ch.link) && <ExternalLink className="h-3.5 w-3.5 opacity-60" />}
-                    </div>
-                  </button>
+                  <div key={ch.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => setActiveChapter(activeChapter === ch.id ? null : ch.id)}
+                      className={`flex-1 text-left px-3 py-2.5 rounded-lg text-sm transition-all flex items-center gap-3 group ${
+                        activeChapter === ch.id
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "hover:bg-muted/60 text-foreground"
+                      }`}
+                    >
+                      <span className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-bold shrink-0 ${
+                        activeChapter === ch.id ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
+                      }`}>
+                        {i + 1}
+                      </span>
+                      <span className="truncate">{ch.title}</span>
+                      <div className="ml-auto flex gap-1 shrink-0">
+                        {ch.pdf_url && <FileText className="h-3.5 w-3.5 opacity-60" />}
+                        {ch.link && isYouTubeUrl(ch.link) && <Video className="h-3.5 w-3.5 opacity-60" />}
+                        {ch.link && !isYouTubeUrl(ch.link) && <ExternalLink className="h-3.5 w-3.5 opacity-60" />}
+                      </div>
+                    </button>
+                    {canManage && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 shrink-0 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteChapter(ch.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
                 ))}
               </div>
+
+              {/* Add chapter button */}
+              {canManage && (
+                <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="w-full mt-3 gap-1">
+                      <Plus className="h-3.5 w-3.5" /> {t("courses.addChapter")}
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{t("courses.addChapter")}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label>{t("courses.chapterTitle")}</Label>
+                        <Input
+                          value={newChapterTitle}
+                          onChange={e => setNewChapterTitle(e.target.value)}
+                          placeholder={t("courses.chapterTitlePlaceholder")}
+                        />
+                      </div>
+                      <div>
+                        <Label className="flex items-center gap-1"><Upload className="h-3 w-3" /> PDF</Label>
+                        <Input
+                          type="file"
+                          accept=".pdf"
+                          onChange={e => setNewChapterPdf(e.target.files?.[0] || null)}
+                          className="cursor-pointer"
+                        />
+                      </div>
+                      <div>
+                        <Label className="flex items-center gap-1"><LinkIcon className="h-3 w-3" /> {t("courses.linkLabel")}</Label>
+                        <Input
+                          value={newChapterLink}
+                          onChange={e => setNewChapterLink(e.target.value)}
+                          placeholder="https://youtube.com/watch?v=... or any URL"
+                        />
+                      </div>
+                    </div>
+                    <Button className="w-full mt-2" onClick={handleAddChapter} disabled={adding || !newChapterTitle.trim()}>
+                      {adding ? "..." : t("courses.addChapter")}
+                    </Button>
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
 
             {/* Content area */}
             <div className="space-y-6">
               <AnimatePresence mode="wait">
-                {active && (
+                {active ? (
                   <motion.div
                     key={active.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -217,6 +339,16 @@ const CourseDetail = () => {
                         <p className="text-muted-foreground">{t("courses.noContent")}</p>
                       </div>
                     )}
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="placeholder"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="glass-card rounded-xl p-12 text-center"
+                  >
+                    <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
+                    <p className="text-muted-foreground">{t("courses.selectChapter")}</p>
                   </motion.div>
                 )}
               </AnimatePresence>

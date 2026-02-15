@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Translation from "./pages/Translation";
 import Courses from "./pages/Courses";
+import CourseDetail from "./pages/CourseDetail";
 import Terminology from "./pages/Terminology";
 import Meetings from "./pages/Meetings";
 import Dashboard from "./pages/Dashboard";
@@ -33,6 +34,7 @@ const AnimatedRoutes = () => {
         <Route path="/register" element={<PageTransition><Register /></PageTransition>} />
         <Route path="/translation" element={<PageTransition><Translation /></PageTransition>} />
         <Route path="/courses" element={<PageTransition><ProtectedRoute><Courses /></ProtectedRoute></PageTransition>} />
+        <Route path="/courses/:id" element={<PageTransition><ProtectedRoute><CourseDetail /></ProtectedRoute></PageTransition>} />
         <Route path="/terminology" element={<PageTransition><ProtectedRoute><Terminology /></ProtectedRoute></PageTransition>} />
         <Route path="/meetings" element={<PageTransition><ProtectedRoute><Meetings /></ProtectedRoute></PageTransition>} />
         <Route path="/dashboard" element={<PageTransition><ProtectedRoute><Dashboard /></ProtectedRoute></PageTransition>} />

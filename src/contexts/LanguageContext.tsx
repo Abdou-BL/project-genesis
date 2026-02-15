@@ -117,7 +117,7 @@ const translations: Record<string, Record<Lang, string>> = {
   "courses.desc": { en: "Professional English courses designed for government employees", fr: "Cours d'anglais professionnels conçus pour les employés du gouvernement" },
   "courses.start": { en: "Start Course", fr: "Commencer le cours" },
   "courses.students": { en: "students", fr: "étudiants" },
-  "courses.modules": { en: "modules", fr: "modules" },
+  "courses.modules": { en: "chapters", fr: "chapitres" },
 
   // Terminology page
   "terminology.title": { en: "Terminology", fr: "Terminologie" },
@@ -195,8 +195,17 @@ const translations: Record<string, Record<Lang, string>> = {
   "courses.courseDesc": { en: "Description", fr: "Description" },
   "courses.level": { en: "Level", fr: "Niveau" },
   "courses.duration": { en: "Duration", fr: "Durée" },
-  "courses.modulesCount": { en: "Number of Modules", fr: "Nombre de modules" },
+  "courses.modulesCount": { en: "Number of Chapters", fr: "Nombre de chapitres" },
   "courses.added": { en: "Course added successfully", fr: "Cours ajouté avec succès" },
+  "courses.chapters": { en: "Chapters", fr: "Chapitres" },
+  "courses.chapter": { en: "Chapter", fr: "Chapitre" },
+  "courses.addChapter": { en: "Add Chapter", fr: "Ajouter un chapitre" },
+  "courses.chapterTitle": { en: "Chapter Title", fr: "Titre du chapitre" },
+  "courses.chapterTitlePlaceholder": { en: "e.g. Introduction to Government English", fr: "ex. Introduction à l'anglais gouvernemental" },
+  "courses.linkLabel": { en: "Link (YouTube or other)", fr: "Lien (YouTube ou autre)" },
+  "courses.backToCourses": { en: "Back to Courses", fr: "Retour aux cours" },
+  "courses.noChapters": { en: "No chapters available for this course yet.", fr: "Aucun chapitre disponible pour ce cours." },
+  "courses.noContent": { en: "No content available for this chapter.", fr: "Aucun contenu disponible pour ce chapitre." },
 };
 
 interface LanguageContextType {
